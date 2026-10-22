@@ -6,12 +6,17 @@ import postgres from 'postgres';
 import { config, version } from './config.mjs';
 import { runMigrations } from './migrate.mjs';
 import { PostgresStore } from './store/postgres.mjs';
+import { requireAdmin, requireAgentToken } from './middleware/auth.mjs';
+import { rateLimit } from './middleware/rate-limit.mjs';
+import { registerEventRoutes } from './routes/events.mjs';
+import { registerTokenRoutes } from './routes/tokens.mjs';
 
 const app = new Hono();
 
 // Initialize database
 const sql = postgres(config.databaseUrl);
 const store = new PostgresStore(sql);
+store.sql = sql; // Expose sql for token routes
 
 // Healthcheck
 app.get('/healthz', (c) => {
@@ -40,6 +45,19 @@ app.get('/api/version', async (c) => {
     },
   });
 });
+
+// Event ingest (agent token required, rate limited)
+const eventsApp = new Hono();
+eventsApp.use('*', requireAgentToken(store));
+eventsApp.use('*', rateLimit({ maxRequests: 300, windowMs: 60000, keyBy: 'accountId' }));
+registerEventRoutes(eventsApp, { store });
+app.route('/', eventsApp);
+
+// Admin API (admin token required)
+const adminApp = new Hono();
+adminApp.use('*', requireAdmin(config));
+registerTokenRoutes(adminApp, { store, config });
+app.route('/', adminApp);
 
 // Startup
 async function main() {
