@@ -11,7 +11,7 @@ const schemaPath = new URL('../../../../packages/core/schema/event-schema.json',
 const rawSchema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 
 const ajv = new Ajv({ allErrors: true, strict: false });
-draft2020(ajv);
+new draft2020(ajv);
 addFormats(ajv);
 const validate = ajv.compile(rawSchema);
 
