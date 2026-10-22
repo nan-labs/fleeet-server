@@ -207,4 +207,53 @@ export class PostgresStore {
     
     return deleted.count;
   }
+
+  async getDeletedRunHashes(accountId) {
+    const rows = await this.sql`
+      select run_hash from deleted_runs
+      where account_id = ${accountId}
+    `;
+    return new Set(rows.map(r => r.run_hash));
+  }
+
+  async getBoardReadTokenByHash(hash) {
+    const [token] = await this.sql`
+      select * from board_read_tokens where token_hash = ${hash}
+    `;
+    return token || null;
+  }
+
+  async insertBoardReadToken(token) {
+    await this.sql`
+      insert into board_read_tokens (
+        id, account_id, token_hash, label, created_at, revoked, revoked_at, last4
+      ) values (
+        ${token.id}, ${token.account_id}, ${token.token_hash}, ${token.label || null},
+        ${token.created_at}, ${token.revoked}, ${token.revoked_at || null},
+        ${token.last4 || null}
+      )
+      on conflict (token_hash) do nothing
+    `;
+    return token;
+  }
+
+  async listBoardReadTokens(account) {
+    const tokens = await this.sql`
+      select * from board_read_tokens
+      where account_id = ${account.id}
+      order by created_at desc
+      limit 100
+    `;
+    return tokens;
+  }
+
+  async revokeBoardReadToken(hash) {
+    const [revoked] = await this.sql`
+      update board_read_tokens
+      set revoked = true, revoked_at = ${new Date().toISOString()}
+      where token_hash = ${hash}
+      returning *
+    `;
+    return revoked || null;
+  }
 }

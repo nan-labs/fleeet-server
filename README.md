@@ -59,6 +59,36 @@ Portable, hosted-agnostic logic for fleeet event processing:
 - **token** — Token hashing, generation, and comparison
 - **store** — Storage interface (no implementation)
 
+## Boards
+
+Boards are **private by default**. Each account has a read-only board at `/b/:slug` showing agent activity.
+
+### Private Boards (default)
+
+Private boards require a read token:
+
+```bash
+# Create a read token via admin API
+curl -X POST http://localhost:3000/api/admin/tokens \
+  -H "Authorization: Bearer $FLEEET_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"account_id": "uuid", "label": "Board Reader"}'
+
+# Access board with read token
+curl http://localhost:3000/api/boards/myslug/events \
+  -H "Authorization: Bearer flr_..."
+```
+
+### Public Boards
+
+To make a board public, set `board_visibility` to `'public'` in the `accounts` table:
+
+```sql
+UPDATE accounts SET board_visibility = 'public' WHERE space = 'myslug';
+```
+
+Public boards are accessible without authentication at `/b/:slug` and via the API at `/api/boards/:slug/events`.
+
 ### Event Schema
 
 The event JSON schema is vendored from [`nan-labs/fleeet`](https://github.com/nan-labs/fleeet). Run `node scripts/sync-schema.mjs` to update, or `node scripts/sync-schema.mjs --check` to verify it matches upstream.
