@@ -1,6 +1,6 @@
 // middleware/auth.mjs — Authentication middleware
 
-import { bearer, hashToken, compareTokens } from '../../../core/src/token.mjs';
+import { bearer, hashToken, compareTokens } from '../../../../packages/core/src/token.mjs';
 
 export function requireAdmin(config) {
   return async (c, next) => {

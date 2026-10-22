@@ -1,6 +1,6 @@
 // routes/tokens.mjs — Admin token management endpoints
 
-import { newToken, hashToken, cleanLabel } from '../../../core/src/token.mjs';
+import { newToken, hashToken, cleanLabel } from '../../../../packages/core/src/token.mjs';
 import { randomUUID } from 'node:crypto';
 
 export function registerTokenRoutes(app, { store, config }) {
