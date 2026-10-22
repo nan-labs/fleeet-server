@@ -20,31 +20,33 @@ function requireBoardAccess(store) {
     
     // Boards are private by default - require read token
     if (account.board_visibility !== 'public') {
-    const auth = c.req.header('authorization');
-    if (!auth) {
-      return c.json({ 
-        error: 'Unauthorized', 
-        message: 'This board is private. A read token is required.' 
-      }, 401);
+      const auth = c.req.header('authorization');
+      if (!auth) {
+        return c.json({ 
+          error: 'Unauthorized', 
+          message: 'This board is private. A read token is required.' 
+        }, 401);
+      }
+      
+      const [scheme, token] = auth.split(' ');
+      if (scheme?.toLowerCase() !== 'bearer' || !token || !token.startsWith('flr_')) {
+        return c.json({ error: 'Invalid read token format' }, 401);
+      }
+      
+      const hash = hashToken(token);
+      const readToken = await store.getBoardReadTokenByHash(hash);
+      
+      if (!readToken || readToken.revoked || readToken.account_id !== account.id) {
+        return c.json({ error: 'Invalid or revoked read token' }, 401);
+      }
+      
+      return await next();
     }
     
-    const [scheme, token] = auth.split(' ');
-    if (scheme?.toLowerCase() !== 'bearer' || !token || !token.startsWith('flr_')) {
-      return c.json({ error: 'Invalid read token format' }, 401);
-    }
-    
-    const hash = hashToken(token);
-    const readToken = await store.getBoardReadTokenByHash(hash);
-    
-    if (!readToken || readToken.revoked || readToken.account_id !== account.id) {
-      return c.json({ error: 'Invalid or revoked read token' }, 401);
-    }
-    
+    // Public board - allow access
     return await next();
-  }
-  
-  // Public board - allow access
-  return await next();
+  };
+}
 
 export function registerBoardRoutes(app, { store }) {
   // Get board events
