@@ -13,6 +13,21 @@ jobs:
       matrix:
         node-version: [22.x]
     
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: fleeet_test
+          POSTGRES_USER: fleeet
+          POSTGRES_PASSWORD: fleeet
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
     steps:
       - uses: actions/checkout@v4
       
@@ -25,7 +40,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Run tests
+      - name: Run unit tests
         run: npm test
       
       - name: Check for hosted service strings
@@ -33,3 +48,35 @@ jobs:
       
       - name: Check schema sync
         run: node scripts/sync-schema.mjs --check
+      
+      - name: Build Docker image
+        run: docker build -t fleeet-server:test .
+      
+      - name: Integration test
+        env:
+          DATABASE_URL: postgres://fleeet:fleeet@localhost:5432/fleeet_test
+          FLEEET_ADMIN_TOKEN: test-admin-token-with-at-least-32-characters-here
+          PORT: 3001
+        run: |
+          # Start server in background
+          node apps/server/src/index.mjs &
+          SERVER_PID=$!
+          
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -f http://localhost:3001/healthz > /dev/null 2>&1; then
+              echo "Server is ready"
+              break
+            fi
+            echo "Waiting for server... ($i/30)"
+            sleep 1
+          done
+          
+          # Test healthcheck
+          curl -f http://localhost:3001/healthz
+          
+          # Test version endpoint
+          curl -f http://localhost:3001/api/version
+          
+          # Stop server
+          kill $SERVER_PID
