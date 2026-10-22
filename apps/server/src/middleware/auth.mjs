@@ -1,6 +1,6 @@
 // middleware/auth.mjs — Authentication middleware
 
-import { bearer, hashToken, compareTokens } from '@fleeet/core';
+import { bearer, hashToken, compareTokens } from '@fleeet/core/token';
 
 export function requireAdmin(config) {
   return async (c, next) => {
