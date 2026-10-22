@@ -2,9 +2,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import postgres from 'postgres';
 
 const BASE_URL = process.env.FLEEET_URL || 'http://localhost:3001';
 const ADMIN_TOKEN = process.env.FLEEET_ADMIN_TOKEN || 'test-admin-token-with-at-least-32-characters-here';
+const DATABASE_URL = process.env.DATABASE_URL || 'postgres://fleeet:fleeet@localhost:5432/fleeet_test';
+
+// Get direct DB access for test setup
+const sql = postgres(DATABASE_URL);
 
 async function request(path, options = {}) {
   const url = `${BASE_URL}${path}`;
@@ -234,8 +239,16 @@ test('Board respects hidden runs - PRIVACY CRITICAL', async () => {
   });
 });
 
-test('Board respects deleted runs - PRIVACY CRITICAL', async () => {
-  const accountId = 'board-deleted-test';
+test('Board respects deleted runs - PRIVACY CRITICAL END-TO-END', async () => {
+  const accountId = 'e2e-deleted-test-' + Date.now();
+  const space = 'deleted-test-' + Date.now();
+  
+  // Create account directly in DB as public board for testing
+  await sql`
+    INSERT INTO accounts (id, space, status, board_visibility)
+    VALUES (${accountId}::uuid, ${space}, 'claimed', 'public')
+    ON CONFLICT (space) DO NOTHING
+  `;
   
   // Create token
   const { status: createStatus, body: createBody } = await request('/api/admin/tokens', {
@@ -243,26 +256,41 @@ test('Board respects deleted runs - PRIVACY CRITICAL', async () => {
     headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
     body: JSON.stringify({
       account_id: accountId,
-      label: 'Deleted Runs Test',
+      label: 'Deleted Runs E2E Test',
     }),
   });
   
   if (createStatus !== 201) {
-    console.warn('Skipping deleted runs test: could not create token');
+    console.warn('Skipping deleted runs e2e test: could not create token');
     return;
   }
   
   const agentToken = createBody.token;
   
-  // Post event
-  const runId = `deleted-run-${Date.now()}`;
+  // Post two events for different runs
+  const visibleRunId = `visible-${Date.now()}`;
+  const deletedRunId = `deleted-${Date.now()}`;
   
   await request('/api/events', {
     method: 'POST',
     headers: { Authorization: `Bearer ${agentToken}` },
     body: JSON.stringify({
       event: 'session_start',
-      run_id: runId,
+      run_id: visibleRunId,
+      ts: new Date().toISOString(),
+      agent: 'Visible Agent',
+      summary: 'This run should be visible',
+      trigger: 'user',
+      schema: 'https://fleeet.app/schema/event/v1.json',
+    }),
+  });
+  
+  await request('/api/events', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${agentToken}` },
+    body: JSON.stringify({
+      event: 'session_start',
+      run_id: deletedRunId,
       ts: new Date().toISOString(),
       agent: 'Deleted Agent',
       summary: 'This run will be deleted',
@@ -271,27 +299,55 @@ test('Board respects deleted runs - PRIVACY CRITICAL', async () => {
     }),
   });
   
-  // Note: We can't test actual deletion without a delete API endpoint
-  // But we verify that the deleted_runs filtering logic exists in the board API
-  // The real test would require admin API to delete runs
+  // Delete one run by inserting into deleted_runs
+  const runHash = await sql`
+    SELECT encode(sha256((${accountId}::text || ':' || ${deletedRunId})::bytea), 'hex') as hash
+  `.then(([r]) => r.hash);
   
-  // For now, verify board API exists and returns proper structure
-  const { status: boardStatus, body: boardBody } = await request(`/api/boards/${accountId}/events`);
+  await sql`
+    INSERT INTO deleted_runs (account_id, run_hash, deleted_by)
+    VALUES (${accountId}::uuid, ${runHash}, 'test')
+    ON CONFLICT (account_id, run_hash) DO NOTHING
+  `;
   
-  if (boardStatus === 200) {
-    assert.ok(Array.isArray(boardBody.runs), 'Board returns runs array');
-    // If we had deletion API, we'd verify deleted run is NOT in this list
-  }
+  // Fetch board events
+  const { status: boardStatus, body: boardBody } = await request(`/api/boards/${space}/events`);
+  
+  assert.equal(boardStatus, 200, 'Public board should return 200');
+  
+  // CRITICAL: Deleted run must not appear in results
+  const runIds = boardBody.runs.map(r => r.run_id);
+  assert.ok(!runIds.includes(deletedRunId), 
+    'PRIVACY VIOLATION: Deleted run appeared on board!');
+  assert.ok(runIds.includes(visibleRunId),
+    'Visible run should appear');
+  
+  // Also verify summary doesn't count deleted run
+  const { status: summaryStatus, body: summaryBody } = await request(`/api/boards/${space}/summary`);
+  assert.equal(summaryStatus, 200);
+  assert.equal(summaryBody.tasks, 1, 'Summary should count only visible run');
   
   // Cleanup
   await request(`/api/admin/tokens/${createBody.id}/revoke`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
   });
+  
+  await sql`DELETE FROM deleted_runs WHERE account_id = ${accountId}::uuid`;
+  await sql`DELETE FROM events WHERE account_id = ${accountId}::uuid`;
+  await sql`DELETE FROM accounts WHERE id = ${accountId}::uuid`;
 });
 
-test('Board applies run overrides correctly', async () => {
-  const accountId = 'board-override-test';
+test('Board applies run overrides - END-TO-END', async () => {
+  const accountId = 'e2e-override-test-' + Date.now();
+  const space = 'override-test-' + Date.now();
+  
+  // Create account directly in DB as public board for testing
+  await sql`
+    INSERT INTO accounts (id, space, status, board_visibility)
+    VALUES (${accountId}::uuid, ${space}, 'claimed', 'public')
+    ON CONFLICT (space) DO NOTHING
+  `;
   
   // Create token
   const { status: createStatus, body: createBody } = await request('/api/admin/tokens', {
@@ -299,19 +355,19 @@ test('Board applies run overrides correctly', async () => {
     headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
     body: JSON.stringify({
       account_id: accountId,
-      label: 'Override Test',
+      label: 'Override E2E Test',
     }),
   });
   
   if (createStatus !== 201) {
-    console.warn('Skipping override test: could not create token');
+    console.warn('Skipping override e2e test: could not create token');
     return;
   }
   
   const agentToken = createBody.token;
   
-  // Post event
-  const runId = `override-run-${Date.now()}`;
+  // Post event with original task/summary
+  const runId = `override-${Date.now()}`;
   
   await request('/api/events', {
     method: 'POST',
@@ -328,23 +384,47 @@ test('Board applies run overrides correctly', async () => {
     }),
   });
   
-  // Note: We can't test actual overrides without an override API endpoint
-  // But we verify that the override logic exists in the board API
-  // The real test would require admin API to add overrides
+  // Insert override directly into DB
+  await sql`
+    INSERT INTO run_overrides (account_id, run_id, task, summary, edited_at, edited_by)
+    VALUES (
+      ${accountId}::uuid, 
+      ${runId}, 
+      'Overridden task', 
+      'Overridden summary',
+      ${new Date().toISOString()},
+      'test'
+    )
+    ON CONFLICT (account_id, run_id) DO UPDATE
+    SET task = EXCLUDED.task, summary = EXCLUDED.summary
+  `;
   
-  // Verify board API exists and returns proper structure
-  const { status: boardStatus, body: boardBody } = await request(`/api/boards/${accountId}/events`);
+  // Fetch board events
+  const { status: boardStatus, body: boardBody } = await request(`/api/boards/${space}/events`);
   
-  if (boardStatus === 200) {
-    assert.ok(Array.isArray(boardBody.runs), 'Board returns runs array');
-    // If we had override API, we'd verify overridden task/summary appears
-  }
+  assert.equal(boardStatus, 200, 'Public board should return 200');
+  
+  // Find the run
+  const run = boardBody.runs.find(r => r.run_id === runId);
+  assert.ok(run, 'Run should be in results');
+  
+  // CRITICAL: Overridden fields must come back overridden
+  assert.equal(run.task, 'Overridden task', 
+    'Task should be overridden');
+  assert.equal(run.summary, 'Overridden summary',
+    'Summary should be overridden');
+  assert.ok(run.edited === true,
+    'Run should be marked as edited');
   
   // Cleanup
   await request(`/api/admin/tokens/${createBody.id}/revoke`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
   });
+  
+  await sql`DELETE FROM run_overrides WHERE account_id = ${accountId}::uuid`;
+  await sql`DELETE FROM events WHERE account_id = ${accountId}::uuid`;
+  await sql`DELETE FROM accounts WHERE id = ${accountId}::uuid`;
 });
 
 test('Newly created board is private by default - returns 401', async () => {
