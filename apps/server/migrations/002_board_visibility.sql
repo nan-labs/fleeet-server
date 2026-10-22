@@ -5,7 +5,7 @@ do $$ begin
   create type board_visibility as enum ('public', 'private');
 exception when duplicate_object then null; end $$;
 
-alter table accounts add column if not exists board_visibility board_visibility not null default 'public';
+alter table accounts add column if not exists board_visibility board_visibility not null default 'private';
 
 -- Board read tokens for private boards
 create table if not exists board_read_tokens (

@@ -32,8 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Read-only board API** (#5):
   - GET /api/boards/:slug/events - Board events with run summaries
   - GET /api/boards/:slug/summary - Snapshot counts and project breakdown
-  - Board visibility setting per account (public/private)
-  - Read tokens (flr_ prefix) for private boards
+  - Board visibility setting per account (default: private)
+  - Read tokens (flr_ prefix) for private board access
   - Respects board_hidden_runs, run_overrides, and deleted_runs
   - Uses @fleeet/core runs, summary, board, and size helpers
 - **Static board UI** at /b/:slug (#5):

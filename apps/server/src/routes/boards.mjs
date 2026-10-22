@@ -18,12 +18,8 @@ function requireBoardAccess(store) {
     
     c.set('account', account);
     
-    // If board is public, allow access
-    if (account.board_visibility === 'public') {
-      return await next();
-    }
-    
-    // Private board - require read token
+    // Boards are private by default - require read token
+    if (account.board_visibility !== 'public') {
     const auth = c.req.header('authorization');
     if (!auth) {
       return c.json({ 
@@ -45,8 +41,10 @@ function requireBoardAccess(store) {
     }
     
     return await next();
-  };
-}
+  }
+  
+  // Public board - allow access
+  return await next();
 
 export function registerBoardRoutes(app, { store }) {
   // Get board events
