@@ -2,6 +2,7 @@
 
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
+import { serveStatic } from '@hono/node-server/serve-static';
 import postgres from 'postgres';
 import { config, version } from './config.mjs';
 import { runMigrations } from './migrate.mjs';
@@ -10,6 +11,7 @@ import { requireAdmin, requireAgentToken } from './middleware/auth.mjs';
 import { rateLimit } from './middleware/rate-limit.mjs';
 import { registerEventRoutes } from './routes/events.mjs';
 import { registerTokenRoutes } from './routes/tokens.mjs';
+import { registerBoardRoutes } from './routes/boards.mjs';
 
 const app = new Hono();
 
@@ -58,6 +60,17 @@ const adminApp = new Hono();
 adminApp.use('*', requireAdmin(config));
 registerTokenRoutes(adminApp, { store, config });
 app.route('/', adminApp);
+
+// Board read API (public or read token required)
+registerBoardRoutes(app, { store });
+
+// Board UI at /b/:slug
+app.get('/b/:slug', async (c) => {
+  const { readFileSync } = await import('node:fs');
+  const path = new URL('../public/board.html', import.meta.url);
+  const html = readFileSync(path, 'utf8');
+  return c.html(html);
+});
 
 // Startup
 async function main() {

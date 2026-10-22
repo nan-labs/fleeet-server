@@ -26,13 +26,24 @@ export function registerEventRoutes(app, { store }) {
   // GET events for an account
   app.get('/api/events', async (c) => {
     const accountId = c.get('accountId');
-    const since = c.req.query('since');
-    const limit = parseInt(c.req.query('limit') || '100', 10);
+    const sinceRaw = c.req.query('since');
+    const limitRaw = c.req.query('limit') || '100';
+    
+    // Validate and clamp limit to 1-500, default 100
+    let limit = parseInt(limitRaw, 10);
+    if (!Number.isFinite(limit) || limit < 1) limit = 100;
+    else if (limit > 500) limit = 500;
+    
+    // Validate since if provided
+    let since = sinceRaw;
+    if (since && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(since)) {
+      return c.json({ error: 'Invalid since parameter, must be ISO 8601 timestamp' }, 400);
+    }
     
     const events = await store.listEvents({ 
       accountId, 
       since, 
-      limit: Math.min(limit, 500) 
+      limit 
     });
     
     return c.json({ events });
