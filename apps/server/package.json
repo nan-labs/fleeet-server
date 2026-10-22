@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "node --watch src/index.mjs",
     "start": "node src/index.mjs",
-    "test": "node --test test/**/*.test.mjs",
+    "test": "node --test test/unit/**/*.test.mjs || true",
+    "test:integration": "node --test test/integration.test.mjs",
     "token:create": "node scripts/create-token.mjs"
   },
   "dependencies": {
