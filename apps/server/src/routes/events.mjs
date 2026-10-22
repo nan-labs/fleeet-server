@@ -9,7 +9,7 @@ import { sanitizeEvent } from '@fleeet/core/sanitize';
 const schemaPath = new URL('../../../../packages/core/schema/event-schema.json', import.meta.url);
 const rawSchema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 
-const ajv = new Ajv({ allErrors: true, strict: false });
+const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
 addFormats(ajv);
 const validate = ajv.compile(rawSchema);
 
