@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://fleeet.space/schema/event.json",
+  "title": "fleeet agent check-in event",
+  "description": "A single status event posted by an agent to fleeet. Four types: session_start, heartbeat, blocked, session_end.",
+  "type": "object",
+  "required": [
+    "event",
+    "run_id",
+    "ts",
+    "agent",
+    "summary"
+  ],
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "session_start",
+        "heartbeat",
+        "blocked",
+        "session_end"
+      ],
+      "description": "The kind of check-in."
+    },
+    "run_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Stable UUID generated at session_start, reused for every event in this run."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone."
+    },
+    "agent": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Human-readable name of the agent. e.g. 'claude-sonnet-4', 'ronan-dev-agent'."
+    },
+    "surface": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 32,
+      "description": "Optional surface the agent is running in, e.g. 'claude.ai', 'Claude Code', 'Cursor'."
+    },
+    "project": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 80,
+      "description": "What the work belongs to. In a Claude or ChatGPT Project: the Project's name. In a repo-based tool (Codex, Cursor, Claude Code, …): the repo or workspace folder name. Otherwise omit it. The server trims it, collapses whitespace, reduces 'owner/repo' (or a URL or path) to the repo name, drops '.git' and caps it at 80 chars; case is kept. When omitted it falls back to source.repo, then 'general' (shown as the agent alone)."
+    },
+    "client": {
+      "type": "object",
+      "description": "Optional. About the reporting client, not the work. fleeet stores it for support and never shows it on the board or in GET /api/events. When skill_version is older than the latest kit, the POST /api/events response (and the MCP tool result) includes update_available {latest, changelog_url}. Old versions are never rejected; an invalid value is dropped.",
+      "properties": {
+        "skill_version": {
+          "type": "string",
+          "maxLength": 32,
+          "pattern": "^v?\\d{1,6}\\.\\d{1,6}\\.\\d{1,6}(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$",
+          "description": "The fleeet-reporting skill / agent kit version, from the skill's frontmatter `version:` (fleeet-emit sends its own KIT_VERSION). Semver, e.g. '1.1.0'."
+        }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240,
+      "x-recommendedMaxLength": 64,
+      "description": "One plain sentence, no period, readable without the prompter's context. Aim for 64 characters or fewer (one line on the board at desktop width); fleeet-emit warns above that. 240 is the hard limit."
+    },
+    "trigger": {
+      "type": "string",
+      "enum": [
+        "user",
+        "routine",
+        "agent"
+      ],
+      "default": "user",
+      "description": "What initiated this work. 'user' = human prompt/task, 'routine' = cron/scheduled, 'agent' = autonomous agent decision. Default: user."
+    },
+    "task": {
+      "type": "string",
+      "x-recommendedMaxLength": 50,
+      "description": "What the run is about, as a short descriptive title (like an email subject). Aim for 50 characters or fewer; fleeet-emit warns above that. Required on session_start; optional elsewhere (fleeet remembers from session_start)."
+    },
+    "source": {
+      "type": "object",
+      "description": "Where to look for exhaust that corresponds to this run. Fleeet uses this to reconcile self-reports against reality.",
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "e.g. 'ronan/fleeet'"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "linear_issue": {
+          "type": "string",
+          "description": "e.g. 'ENG-1204'"
+        },
+        "cowork_session_id": {
+          "type": "string"
+        },
+        "vercel_project": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "progress": {
+      "type": "object",
+      "description": "Only meaningful on heartbeat.",
+      "properties": {
+        "commits": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "files_changed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tests_passing": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tests_failing": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "blocker": {
+      "type": "object",
+      "description": "Required on blocked events.",
+      "required": [
+        "kind",
+        "question"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ambiguity",
+            "missing_credential",
+            "failing_dep",
+            "design_call",
+            "access",
+            "other"
+          ]
+        },
+        "question": {
+          "type": "string",
+          "maxLength": 480,
+          "description": "The specific thing the human needs to resolve."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "If the agent has plausible answers, list them. Two or three max."
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "description": "Only on session_end.",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "shipped",
+            "abandoned",
+            "handed_off",
+            "failed"
+          ]
+        },
+        "artefacts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "url"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "pr",
+                  "commit",
+                  "deploy",
+                  "doc",
+                  "design",
+                  "other"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "format": "uri"
+              },
+              "label": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "note": {
+          "type": "string",
+          "maxLength": 480
+        },
+        "usage": {
+          "type": "object",
+          "description": "Optional token counts for the whole session, only when your tool reports them. When present, the server sizes the task from real tokens (input + output) instead of the proxy (duration, heartbeats, artefacts, files_changed).",
+          "properties": {
+            "input_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "output_tokens": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "source": {
+              "type": "string",
+              "maxLength": 40,
+              "description": "Where the counts come from, e.g. 'reported' (from the tool or API) or 'estimated'."
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "session_start"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "task"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "blocked"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "blocker"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event": {
+            "const": "session_end"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "outcome"
+        ]
+      }
+    }
+  ]
+}
