@@ -2,6 +2,8 @@
 
 Portable fleeet logic and HTTP server with Postgres storage.
 
+📦 [Contributing](./CONTRIBUTING.md) | 🚀 [Releasing](./RELEASING.md)
+
 ## Structure
 
 - `packages/core` — `@fleeet/core`, shared portable logic

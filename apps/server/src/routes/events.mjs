@@ -23,6 +23,21 @@ const MAX_BATCH_SIZE = 512 * 1024; // 512 KB per request
 const MAX_EVENTS_PER_BATCH = 50;
 
 export function registerEventRoutes(app, { store }) {
+  // GET events for an account
+  app.get('/api/events', async (c) => {
+    const accountId = c.get('accountId');
+    const since = c.req.query('since');
+    const limit = parseInt(c.req.query('limit') || '100', 10);
+    
+    const events = await store.listEvents({ 
+      accountId, 
+      since, 
+      limit: Math.min(limit, 500) 
+    });
+    
+    return c.json({ events });
+  });
+
   app.post('/api/events', async (c) => {
     // Check content length
     const contentLength = parseInt(c.req.header('content-length') || '0', 10);

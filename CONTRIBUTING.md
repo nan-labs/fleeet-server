@@ -2,6 +2,8 @@
 
 fleeet-server uses the [Developer Certificate of Origin (DCO)](https://developercertificate.org/).
 
+See also: [RELEASING.md](./RELEASING.md) for the release process.
+
 ## Developer Certificate of Origin
 
 By contributing to this project, you certify that:
