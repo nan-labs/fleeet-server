@@ -2,7 +2,7 @@
 // create-token.mjs — CLI tool to create agent tokens
 
 import postgres from 'postgres';
-import { newToken, hashToken, cleanLabel } from '@fleeet/core/token';
+import { newToken, hashToken, cleanLabel } from '../../../packages/core/src/token.mjs';
 import { randomUUID } from 'node:crypto';
 import { config } from '../src/config.mjs';
 import { PostgresStore } from '../src/store/postgres.mjs';
