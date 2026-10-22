@@ -2,6 +2,7 @@
 
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
+import draft2020 from 'ajv/dist/2020.js';
 import { readFileSync } from 'node:fs';
 import { sanitizeEvent } from '@fleeet/core/sanitize';
 
@@ -9,7 +10,8 @@ import { sanitizeEvent } from '@fleeet/core/sanitize';
 const schemaPath = new URL('../../../../packages/core/schema/event-schema.json', import.meta.url);
 const rawSchema = JSON.parse(readFileSync(schemaPath, 'utf8'));
 
-const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false });
+const ajv = new Ajv({ allErrors: true, strict: false });
+draft2020(ajv);
 addFormats(ajv);
 const validate = ajv.compile(rawSchema);
 
