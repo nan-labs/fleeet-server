@@ -3,7 +3,7 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { readFileSync } from 'node:fs';
-import { sanitizeEvent } from '../../../../packages/core/src/sanitize.mjs';
+import { sanitizeEvent } from '@fleeet/core/sanitize';
 
 // Load and compile schema
 const schemaPath = new URL('../../../../packages/core/schema/event-schema.json', import.meta.url);
