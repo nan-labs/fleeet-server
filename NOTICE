@@ -1,0 +1,9 @@
+fleeet-server
+Copyright 2024-2026 Ronan Flynn-Curran and contributors
+
+This product includes software developed as part of fleeet
+(https://fleeet.space).
+
+Portions of this software were extracted from the private fleeet-core
+repository with permission, cleaned of hosted service dependencies,
+and released under the Apache License 2.0.

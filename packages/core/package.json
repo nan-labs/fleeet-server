@@ -1,0 +1,38 @@
+{
+  "name": "@fleeet/core",
+  "version": "0.1.0",
+  "description": "Portable fleeet logic: event validation, sanitization, and run computation",
+  "type": "module",
+  "main": "./src/index.mjs",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./sanitize": "./src/sanitize.mjs",
+    "./model": "./src/model.mjs",
+    "./colors": "./src/colors.mjs",
+    "./size": "./src/size.mjs",
+    "./runs": "./src/runs.mjs",
+    "./summary": "./src/summary.mjs",
+    "./board": "./src/board.mjs",
+    "./token": "./src/token.mjs",
+    "./store": "./src/store.mjs"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test": "node --test test/**/*.test.mjs",
+    "lint": "echo 'Lint not configured yet'"
+  },
+  "keywords": [
+    "fleeet",
+    "agent",
+    "events"
+  ],
+  "author": "Ronan Flynn-Curran",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nan-labs/fleeet-server.git",
+    "directory": "packages/core"
+  }
+}
