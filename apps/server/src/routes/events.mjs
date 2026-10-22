@@ -3,7 +3,7 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { readFileSync } from 'node:fs';
-import { sanitize } from '../../../../packages/core/src/sanitize.mjs';
+import { sanitizeEvent } from '../../../../packages/core/src/sanitize.mjs';
 
 // Load and compile schema
 const schemaPath = new URL('../../../../packages/core/schema/event-schema.json', import.meta.url);
@@ -90,7 +90,7 @@ export function registerEventRoutes(app, { store }) {
       }
 
       // Sanitize
-      const { event: sanitized, redactions } = sanitize(raw);
+      const { event: sanitized, redactions } = sanitizeEvent(raw);
 
       // Add server metadata
       const dbEvent = {
