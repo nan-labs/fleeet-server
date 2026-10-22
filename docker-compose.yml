@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fleeet
+      POSTGRES_USER: fleeet
+      POSTGRES_PASSWORD: fleeet
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleeet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://fleeet:fleeet@postgres:5432/fleeet
+      FLEEET_ADMIN_TOKEN: ${FLEEET_ADMIN_TOKEN}
+      PORT: 3000
+      FLEEET_PUBLIC_URL: http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:3000/healthz').then(r => r.ok ? process.exit(0) : process.exit(1))\""]
+      interval: 30s
+      timeout: 3s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  postgres-data:

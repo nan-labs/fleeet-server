@@ -1,0 +1,30 @@
+{
+  "name": "@fleeet/server",
+  "version": "0.1.0",
+  "description": "fleeet HTTP server with Postgres storage",
+  "type": "module",
+  "main": "./src/index.mjs",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.mjs",
+    "start": "node src/index.mjs",
+    "test": "node --test test/**/*.test.mjs"
+  },
+  "dependencies": {
+    "@fleeet/core": "*",
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  },
+  "keywords": [
+    "fleeet",
+    "server"
+  ],
+  "author": "Ronan Flynn-Curran",
+  "license": "Apache-2.0"
+}
